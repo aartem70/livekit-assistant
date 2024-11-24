@@ -1,10 +1,11 @@
 services:
 - type: pserv
-  repo: https://github.com/miracle524/livekit-deployment
+  repo: https://github.com/aartem70/livekit-assistant
+
   # Change this to the path containing your Dockerfile
   rootDir: .
 
-  name: livekit-deployment
+  name: livekit-agent
   runtime: image
 
   # Free plan is not available for private services
@@ -13,7 +14,7 @@ services:
   # Environment variables are stored in a group
   # created in the Render dashboard.
   envVars:
-  - fromGroup: livekit-deployment-env 
+  - fromGroup: livekit-agent-env
   region: virginia
 
   # 300s is the standard allowed maximum. Talk to render.com support if you need this increased.
