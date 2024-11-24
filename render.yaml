@@ -6,7 +6,7 @@ services:
   rootDir: .
 
   name: livekit-agent
-  runtime: image
+  runtime: docker
 
   # Free plan is not available for private services
   plan: starter
