@@ -1,5 +1,5 @@
 services:
-- type: pserv
+- type: web
   repo: https://github.com/aartem70/livekit-assistant
 
   # Change this to the path containing your Dockerfile
@@ -9,7 +9,7 @@ services:
   runtime: docker
 
   # Free plan is not available for private services
-  plan: starter
+  plan: free
 
   # Environment variables are stored in a group
   # created in the Render dashboard.
