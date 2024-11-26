@@ -10,7 +10,7 @@ from livekit.agents.llm import (
     ChatImage,
     ChatMessage,
 )
-from livekit.agents.voice_assistant import VoiceAssistant
+from livekit.agents.voice_assistant import VoiceAssistant, AssistantCallContext
 from livekit.plugins import deepgram, openai, silero
 
 load_dotenv()
@@ -34,7 +34,10 @@ class AssistantFunction(agents.llm.FunctionContext):
         ],
     ):
         print(f"Message triggering vision capabilities: {user_msg}")
-        return None
+        context = AssistantCallContext.get_current()
+        context.store_metadata("user_msg", user_msg)
+
+        return ""
 
 
 async def get_video_track(room: rtc.Room):
@@ -70,7 +73,7 @@ async def entrypoint(ctx: JobContext):
             ChatMessage(
                 role="system",
                 content=(
-                    "Your name is Alloy. You are a funny, witty bot. Your interface with users will be voice and vision."
+                    "Your name is Jack. You are a funny, witty bot. Your interface with users will be voice and vision."
                     "Respond with short and concise answers. Avoid using unpronouncable punctuation or emojis."
                 ),
             )
@@ -97,7 +100,7 @@ async def entrypoint(ctx: JobContext):
         chat_ctx=chat_context,
     )
 
-    chat = rtc.ChatManager(ctx.room)
+    # chat = rtc.ChatManager(ctx.room)
 
     async def _answer(text: str, use_image: bool = False):
         """
@@ -105,6 +108,8 @@ async def entrypoint(ctx: JobContext):
         image captured from the video track.
         """
         content: list[str | ChatImage] = [text]
+
+        print(chat_context.messages)
         if use_image and latest_image:
             content.append(ChatImage(image=latest_image))
 
@@ -113,30 +118,42 @@ async def entrypoint(ctx: JobContext):
         stream = gpt.chat(chat_ctx=chat_context)
         await assistant.say(stream, allow_interruptions=True)
 
-    @chat.on("message_received")
-    def on_message_received(msg: rtc.ChatMessage):
-        """This event triggers whenever we get a new message from the user."""
+    # @chat.on("message_received")
+    # def on_message_received(msg: rtc.ChatMessage):
+    #     """This event triggers whenever we get a new message from the user."""
+    #     if msg.message:
+    #         asyncio.create_task(_answer(msg.message, use_image=False))
 
-        if msg.message:
-            asyncio.create_task(_answer(msg.message, use_image=False))
+    # @assistant.on("function_calls_finished")
+    # def on_function_calls_finished(ctx: AssistantCallContext):
+    #     """This event triggers when an assistant's function call completes."""
+    #     print(ctx.get_metadata("user_msg"))                 
+    #     user_msg = ctx.get_metadata("user_msg")
+    #     if user_msg:
+    #         asyncio.create_task(_answer(user_msg, use_image=True))
 
     @assistant.on("function_calls_finished")
     def on_function_calls_finished(called_functions: list[agents.llm.CalledFunction]):
         """This event triggers when an assistant's function call completes."""
-
+        # print(called_functions)
         if len(called_functions) == 0:
             return
 
         user_msg = called_functions[0].call_info.arguments.get("user_msg")
+        print(f"user_msg: {user_msg}")
         if user_msg:
             asyncio.create_task(_answer(user_msg, use_image=True))
 
     assistant.start(ctx.room)
 
+    # chat.
+
     await asyncio.sleep(1)
+    # await chat.say("Hi there! How can I help?")
     await assistant.say("Hi there! How can I help?", allow_interruptions=True)
 
     while ctx.room.connection_state == rtc.ConnectionState.CONN_CONNECTED:
+        print("Waiting for video track")
         video_track = await get_video_track(ctx.room)
 
         async for event in rtc.VideoStream(video_track):
